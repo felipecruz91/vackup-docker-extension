@@ -27,6 +27,7 @@ import ExportDialog from "./components/ExportDialog";
 import ImportDialog from "./components/ImportDialog";
 import SaveDialog from "./components/SaveDialog";
 import LoadDialog from "./components/LoadDialog";
+import DockerContextSelect from "./components/DockerContextSelect";
 import { MyContext } from ".";
 
 const client = createDockerDesktopClient();
@@ -54,6 +55,9 @@ export function App() {
     React.useState<boolean>(false);
   const [openSaveDialog, setOpenSaveDialog] = React.useState<boolean>(false);
   const [openLoadDialog, setOpenLoadDialog] = React.useState<boolean>(false);
+
+  const [dockerContextName, setDockerContextName] =
+    React.useState<string>("default");
 
   const ddClient = useDockerDesktopClient();
 
@@ -192,9 +196,12 @@ export function App() {
   };
 
   useEffect(() => {
+    console.log("dockerContextName: ", dockerContextName);
     const listVolumes = async () => {
       try {
-        const result = await ddClient.docker.cli.exec("system", [
+        const result = await ddClient.docker.cli.exec("--context", [
+          dockerContextName,
+          "system",
           "df",
           "-v",
           "--format",
@@ -244,7 +251,7 @@ export function App() {
     listVolumes();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadTable]);
+  }, [dockerContextName, reloadTable]);
 
   useEffect(() => {
     const rows = volumes
@@ -295,7 +302,9 @@ export function App() {
     volumeName: string
   ): Promise<{ volumeName: string; containers: string[] }> => {
     try {
-      const output = await ddClient.docker.cli.exec("ps", [
+      const output = await ddClient.docker.cli.exec("--context", [
+        dockerContextName,
+        "ps",
         "-a",
         `--filter="volume=${volumeName}"`,
         `--format="{{ .Names}}"`,
@@ -333,9 +342,13 @@ export function App() {
   return (
     <>
       <Typography variant="h3">Vackup Extension</Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ mt: 2, mb: 4 }}>
         Easily backup and restore docker volumes.
       </Typography>
+      <DockerContextSelect
+        dockerContextName={dockerContextName}
+        setDockerContextName={setDockerContextName}
+      />
       <Stack direction="column" alignItems="start" spacing={2} sx={{ mt: 4 }}>
         <Grid container>
           <Grid item flex={1}>
@@ -380,6 +393,7 @@ export function App() {
             <ExportDialog
               open={openExportDialog}
               onClose={handleExportDialogClose}
+              dockerContextName={dockerContextName}
             />
           )}
 
@@ -387,6 +401,7 @@ export function App() {
             <ImportDialog
               open={openImportDialog}
               onClose={handleImportDialogClose}
+              dockerContextName={dockerContextName}
             />
           )}
 
